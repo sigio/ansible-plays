@@ -1,0 +1,13 @@
+---
+
+  - name: make_virbr0_network
+    command: creates=/etc/libvirt/qemu/network/virbr0.xml virsh net-define /etc/libvirt/qemu/networks/virbr0.xml.input
+    notify: autostart_virbr0_network
+    notify: start_virbr0_network
+
+  - name: autostart_virbr0_network
+    file: src=/etc/libvirt/qemu/networks/virbr0.xml dest=/etc/libvirt/qemu/networks/autostart/virbr0.xml state=link owner=root group=root
+
+  - name: start_virbr0_network
+    command: virsh net-start virbr0
+

@@ -1,0 +1,36 @@
+# Tasks for the libvirt role
+# Setup an environment for hosting virtual-machines with libvirt
+
+---
+
+  - name: Install packages
+    apt: name={{ item }} state=installed
+    with_items:
+      - libvirt-bin
+      - virt-manager
+      - xauth
+      - iptables-persistent
+      - bridge-utils
+    when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+  - name: Install packages
+    apt: name={{ item }} state=installed
+    with_items:
+      - libvirt-bin
+      - virt-manager
+      - xauth
+      - iptables
+      - bridge-utils
+    when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+  - name: Stop 'default' libvirt network
+    command: removes=/etc/libvirt/qemu/networks/default.xml /usr/bin/virsh net-destroy default
+    ignore_errors: true
+
+  - name: Delete 'default' libvirt network
+    command: removes=/etc/libvirt/qemu/networks/default.xml /usr/bin/virsh net-undefine default
+    ignore_errors: true
+
+  - name: Copy network-definition for default virbr0 network
+    copy: src=libvirt-network-virbr0.xml dest=/etc/libvirt/qemu/networks/virbr0.xml.input
+    notify: make_virbr0_network

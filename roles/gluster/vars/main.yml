@@ -1,0 +1,4 @@
+brickmount: "/export"
+brickdir: "brick"
+volumename: "gv0"
+volumemount: "/gv0"

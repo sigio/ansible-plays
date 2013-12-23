@@ -1,0 +1,32 @@
+# Tasks for the common role
+# The cemtos/redhad stuff is untested
+
+---
+
+  - name: Install essential software
+    apt: name={{ item }} state=installed
+    with_items:
+      - facter
+      - lsb-release
+      - screen
+      - pv
+      - less
+      - bzip2
+      - lzop
+      - openssh-client
+      - rsync
+      - sudo
+    when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+  - name: Install essential software
+    yum: name={{ item }} state=installed
+    with_items:
+      - facter
+      - redhat-lsb-core
+      - screen
+      - bzip2
+      - lzop
+      - rsync
+      - sudo
+    when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+

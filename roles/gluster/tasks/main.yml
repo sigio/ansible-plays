@@ -1,0 +1,101 @@
+# Tasks for gluster servers
+
+---
+
+  - name: Install glusterfs epel repository (CentOS/RHEL)
+    template: src=glusterfs-epel.repo dest=/etc/yum.repos.d/glusterfs-epel.repo
+    when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+    tags: repo
+
+  - name: Install gluster software (Apt)
+    apt: name={{ item }} state=installed
+    with_items:
+      - glusterfs-server
+      - glusterfs-client
+      - gdisk
+      - xfsprogs
+    when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+    tags: pkg
+
+  - name: Install essential software (Yum)
+    yum: name={{ item }} state=installed
+    with_items:
+      - glusterfs-server
+      - glusterfs-fuse
+      - glusterfs-vim
+      - gdisk
+      - xfsprogs
+    when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+    tags: pkg
+
+  - name: Copy make-partition script
+    copy: src=make-partition.sh dest=/tmp/make-partition.sh owner=root group=root mode=0700
+    tags: partition
+
+  - name: Create partition on gluster-disks
+    command: /tmp/make-partition.sh {{ item }} creates=/dev/{{ item }}1
+    with_items: glusterdisks
+    tags: partition
+
+  - name: Remove make-partitions script
+    command: rm /tmp/make-partition.sh removes=/tmp/make-partition.sh
+    tags: partition
+
+  - name: Create XFS filesystems on gluster disks
+    filesystem: dev=/dev/{{ item }}1 fstype=xfs opts="-i size=512"
+    with_items: glusterdisks
+    tags: filesystem
+
+  - name: Create mountpoint directories
+    file: dest={{ brickmount }}/{{ item }}1 owner=root group=root mode=0700
+    with_items: glusterdisks
+    tags:
+      - filesystem
+      - mount
+
+  - name: Mount filesystems
+    mount: name={{ brickmount }}/{{ item }}1 state=mounted src=/dev/{{ item }}1 fstype=xfs opts=defaults dump=1 passno=2
+    with_items: glusterdisks
+    tags:
+      - filesystem
+      - mount
+
+  - name: Create brick directories
+    file: dest={{ brickmount }}/{{ item }}1/brick owner=root group=root mode=0700
+    with_items: glusterdisks
+    tags:
+      - filesystem
+      - mount
+
+  - name: Start gluster service (CentOS/RHEL)
+    service: name=$item state=started enabled=yes
+    with_items:
+      - glusterd
+    when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+  - name: Check existance of {{ volumename }} gluster volume
+    command: /usr/sbin/gluster volume info {{ volumename }}
+    register: volumeinfo
+    ignore_errors: True
+
+  - name: Abort play when volume {{ volumename }} isn't present
+    fail: msg="Please manually create the {{ volumename }} gluster volume before continuing"
+    when: "'does not exist' in volumeinfo.stdout"
+
+  - name: Start gluster volume {{ volumename }}
+    command: /usr/sbin/gluster volume start {{ volumename }}
+    when: "'Status: Created' in volumeinfo.stdout"
+
+  - name: Create mountpoint for gluster filesystem
+    file: dest={{ volumemount }} owner=root group=root mode=0755 state=directory
+    tags:
+      - mount
+
+  - name: Check status of {{ volumename }} gluster volume
+    command: /usr/sbin/gluster volume info {{ volumename }}
+    register: volumeinfo2
+    ignore_errors: True
+
+  - name: Mount gluster filesystem using fuse
+    mount: name={{ volumemount }} state=mounted src=localhost:{{ volumename }} fstype=glusterfs opts=defaults dump=1 passno=2
+    when: "'Status: Started' in volumeinfo2.stdout"
