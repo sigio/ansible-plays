@@ -1,0 +1,7 @@
+[all]
+cluster1
+cluster2
+
+[all:vars]
+osver=6
+glusterdisks= [ 'sdb', 'sdc', 'sdd' ]
