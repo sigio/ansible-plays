@@ -18,6 +18,9 @@
       - sudo
     when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
+# FIXME: facter isn't (yet) in the default centos/rhel repositories
+# so we should probably add some repositories first
+
   - name: Install essential software
     yum: name={{ item }} state=installed
     with_items:
